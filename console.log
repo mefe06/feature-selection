@@ -1,0 +1,10 @@
+DEBUG:pyomo.core:Constructing ConcreteModel 'ConcreteModel', from data=None
+DEBUG:pyomo.core:Constructing ScalarObjective 'obj' on [Model] from data=None
+DEBUG:pyomo.core:Constructing objective obj
+DEBUG:pyomo.core:Constructed component ''[Model].obj'':
+obj : Size=1, Index=None, Active=True
+    Key  : Active : Sense    : Expression
+    None :   True : minimize : 3.703396478391463
+
+DEBUG:pyomo.core:Constructing RangeSet, name=FiniteScalarRangeSet, from data=None
+DEBUG:pyomo.core:Constructing RangeSet, name=FiniteScalarRangeSet, from data=None
