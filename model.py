@@ -31,8 +31,8 @@ class LGBM_w_Feature_Selector():
             if problem_type == "Classifier":
                 self.model = lgb.LGBMClassifier(max_depth=max_depth,verbose= -1)
                 self.initial_model=lgb.LGBMClassifier(random_state=42, verbose= -1)
-                self.criterion = roc_auc_score
-                self.cv_scoring = "roc_auc_ovr"
+                self.criterion = log_loss
+                self.cv_scoring = "neg_log_loss"
 
             else:
 
@@ -47,8 +47,8 @@ class LGBM_w_Feature_Selector():
             if problem_type == "Classifier":
                 self.model = MLPClassifier(hidden_layer_sizes= layer_sizes, activation='relu')
                 self.initial_model = MLPClassifier(random_state=42)
-                self.criterion = roc_auc_score
-                self.cv_scoring = "roc_auc_ovr"
+                self.criterion = log_loss
+                self.cv_scoring = "neg_log_loss"
 
             else:
             #self.model = MLPRegressor(hidden_layer_sizes=layer_sizes, warm_start=False, max_iter=500)
@@ -128,7 +128,7 @@ class LGBM_w_Feature_Selector():
                 #     temp_loss = self.criterion(self.best_model_opt_1.predict(x*temp_mask), y_val)
                 # except: 
                 if self.problem_type=="Classifier":
-                    temp_loss = self.criterion(self.model.predict(x*temp_mask), y_val, labels=(0,1))
+                    temp_loss = self.criterion( y_val, self.model.predict_proba(x*temp_mask)[:,1])
                 else: 
                     temp_loss = self.criterion(self.model.predict(x*temp_mask), y_val)
 
@@ -275,9 +275,9 @@ class LGBM_w_Feature_Selector():
         # Gradient Boosting FS
         np.random.seed(seed)
         if self.problem_type=="Classifier":
-            forest=lgb.LGBMClassifier(n_estimators=50,random_state=0,importance_type='gain', verbose=-1)
+            forest=lgb.LGBMClassifier(max_depth = 3, n_estimators=50,random_state=0,importance_type='gain', verbose=-1)
         else:
-            forest = lgb.LGBMRegressor(n_estimators=50,random_state=0,importance_type='gain', verbose=-1)
+            forest = lgb.LGBMRegressor(max_depth = 3, n_estimators=50,random_state=0,importance_type='gain', verbose=-1)
         forest.fit(self.X_train, self.y_train.ravel())
         gb_importances = forest.feature_importances_
 
@@ -319,12 +319,11 @@ class LGBM_w_Feature_Selector():
         masked_train_x = np.delete(self.X_train, zero_columns, axis=1)
         masked_test_x = np.delete(self.X_test, zero_columns, axis=1)
         self.model.fit(masked_train_x, self.y_train)    
-        predicted_values = self.model.predict(masked_test_x)
-
         if self.problem_type == "Classifier":
-            loss = roc_auc_score(self.y_test ,predicted_values)
+            loss = roc_auc_score(self.y_test ,self.model.predict_proba(masked_test_x)[:,1])
+            #loss = log_loss(self.y_test ,self.model.predict_proba(masked_test_x)[:,1])
         else:  
-            loss = mean_squared_error(self.y_test  ,predicted_values)
+            loss = mean_squared_error(self.y_test  ,self.model.predict(masked_test_x))
         
         return loss
 
