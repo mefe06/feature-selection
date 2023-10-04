@@ -10,7 +10,7 @@ import numpy as np
 import logging
 warnings.filterwarnings("ignore", category=DataConversionWarning)
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
-logging.basicConfig(filename='results_flbmo.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='range_selection_flbmo_m4.log', level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def log_dictionaries(key_name, keys, dict_names, *dicts,):
     # Log the header
@@ -42,155 +42,207 @@ mlp_param_grid ={
     "warm_start":[False], 
     "momentum":[0.9], 
 } 
-dict_names_with_rfe = ["All features", "GBM Selected", "FLBMO Selected", "RFE Selected"]
-dict_names_no_rfe= ["All features", "GBM Selected", "FLBMO Selected"]
+dict_names_with_rfe = ["All features", "GBM Selected", "FLBMO Selected", "RFE Selected", "MI Selected"]
+dict_names_no_rfe= ["All features", "GBM Selected", "FLBMO Selected", "MI Selected"]
 all, gb, mo, rfe = {}, {}, {}, {}
 
-for f_number in [3, 5, 8]:
-    all_scores = []
-    gb_scores = []
-    mo_scores = []
-    rfe_scores = []
-    for i in range(200):
-        data = pd.read_csv("/home/efe/Documents/m4-dataset/m4-preprocess/m4-preprocess/{}_M4_Hourly.csv".format(str(i)))
-        data = data.rename(columns = lambda x:re.sub('[^A-Za-z0-9_]+', '', x))
-        train_data, X_test = data.iloc[:-50], data.iloc[-50:]
-        nb = len(train_data)
-        val_split = 0.2
-        X_train, X_val = train_data.iloc[:int((1-val_split)*nb)], train_data.iloc[int((1-val_split)*nb):]
-        y_train, y_val, y_test = X_train[["y"]], X_val[["y"]], X_test[["y"]]
-        scaler = MinMaxScaler()
-        normalized_X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
-        normalized_X_val = pd.DataFrame(scaler.fit_transform(X_val), columns=X_val.columns)
-        normalized_X_test = pd.DataFrame(scaler.fit_transform(X_test), columns=X_test.columns)
-        normalized_y_train = pd.DataFrame(scaler.fit_transform(y_train), columns=y_train.columns).values
-        normalized_y_val = pd.DataFrame(scaler.fit_transform(y_val), columns=y_val.columns).values
-        normalized_y_test = pd.DataFrame(scaler.fit_transform(y_test), columns=y_test.columns).values
-        normalized_X_train, normalized_X_val, normalized_X_test = normalized_X_train.drop(columns=['y']).values, normalized_X_val.drop(columns=['y']).values, normalized_X_test.drop(columns=['y']).values
-        network = LGBM_w_Feature_Selector(model="lgbm",problem_type="regression",param_grid=lgbm_param_grid,X_train=normalized_X_train, X_test=normalized_X_test, slack=0.1, 
-                                                X_val=normalized_X_val, y_val=normalized_y_val,y_train=normalized_y_train,y_test=normalized_y_test,iterations=10) 
-        _,all_score, gb_score, mo_score, rfe_score = network.feature_extraction(f_number, seed=42 , method="number of features", run_CV=True, include_RFE=True)
-        all_scores.append(all_score)
-        gb_scores.append(gb_score)    
-        mo_scores.append(mo_score)
-        rfe_scores.append(rfe_score)
+# for f_number in [3, 5, 8]:
+#     all_scores = []
+#     gb_scores = []
+#     mo_scores = []
+#     rfe_scores = []
+#     for i in range(200):
+#         data = pd.read_csv("/home/efe/Documents/m4-dataset/m4-preprocess/m4-preprocess/{}_M4_Hourly.csv".format(str(i)))
+#         data = data.rename(columns = lambda x:re.sub('[^A-Za-z0-9_]+', '', x))
+#         train_data, X_test = data.iloc[:-50], data.iloc[-50:]
+#         nb = len(train_data)
+#         val_split = 0.2
+#         X_train, X_val = train_data.iloc[:int((1-val_split)*nb)], train_data.iloc[int((1-val_split)*nb):]
+#         y_train, y_val, y_test = X_train[["y"]], X_val[["y"]], X_test[["y"]]
+#         scaler = MinMaxScaler()
+#         normalized_X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
+#         normalized_X_val = pd.DataFrame(scaler.fit_transform(X_val), columns=X_val.columns)
+#         normalized_X_test = pd.DataFrame(scaler.fit_transform(X_test), columns=X_test.columns)
+#         normalized_y_train = pd.DataFrame(scaler.fit_transform(y_train), columns=y_train.columns).values
+#         normalized_y_val = pd.DataFrame(scaler.fit_transform(y_val), columns=y_val.columns).values
+#         normalized_y_test = pd.DataFrame(scaler.fit_transform(y_test), columns=y_test.columns).values
+#         normalized_X_train, normalized_X_val, normalized_X_test = normalized_X_train.drop(columns=['y']).values, normalized_X_val.drop(columns=['y']).values, normalized_X_test.drop(columns=['y']).values
+#         network = LGBM_w_Feature_Selector(model="lgbm",problem_type="regression",param_grid=lgbm_param_grid,X_train=normalized_X_train, X_test=normalized_X_test, slack=0.1, 
+#                                                 X_val=normalized_X_val, y_val=normalized_y_val,y_train=normalized_y_train,y_test=normalized_y_test,iterations=10) 
+#         _,all_score, gb_score, mo_score, rfe_score = network.feature_extraction(f_number, seed=42 , method="number of features", run_CV=True, include_RFE=True)
+#         all_scores.append(all_score)
+#         gb_scores.append(gb_score)    
+#         mo_scores.append(mo_score)
+#         rfe_scores.append(rfe_score)
 
-    all[f_number] = np.mean(all_scores)
-    gb[f_number] = np.mean(gb_scores)
-    mo[f_number] = np.mean(mo_scores)
-    rfe[f_number] = np.mean(rfe_scores)
-logging.info("For M4 hourly lgbm")
-log_dictionaries("MSE", all.keys(),dict_names_with_rfe, all, gb, mo, rfe)
+#     all[f_number] = np.mean(all_scores)
+#     gb[f_number] = np.mean(gb_scores)
+#     mo[f_number] = np.mean(mo_scores)
+#     rfe[f_number] = np.mean(rfe_scores)
+# logging.info("For M4 hourly lgbm")
+# log_dictionaries("MSE", all.keys(),dict_names_with_rfe, all, gb, mo, rfe)
 
-all, gb, mo, rfe = {}, {}, {}, {}
+all, gb, mo, rfe, mi = {}, {}, {}, {}, {}
+a = range(100)
+b=range(100,200)
+c = range(200, 300)
+d=range(300,400)
+ranges= [a,b,c,d]
+for interval in ranges:
+    for f_number in [6, 9, 12, 15]:
+        all_scores = []
+        gb_scores = []
+        mo_scores = []
+        mi_scores = []
+        rfe_scores = []
+        for i in interval:
+            data = pd.read_csv("/home/efe/Documents/m4-dataset/m4-preprocess/m4-preprocess/{}_M4_Daily.csv".format(str(i)))
+            data = data.rename(columns = lambda x:re.sub('[^A-Za-z0-9_]+', '', x))
+            train_data, X_test = data.iloc[:-50], data.iloc[-50:]
+            nb = len(data)
+            val_split = 0.3
+            test_split = 0.1
+            X_train, X_val, X_test = data.iloc[:int((1-(val_split+test_split))*nb)], data.iloc[int((1-(val_split+test_split))*nb):int((1-(test_split))*nb)], data.iloc[int((1-(test_split))*nb):]
+            y_train, y_val, y_test = X_train[["y"]], X_val[["y"]], X_test[["y"]]
+            scaler = MinMaxScaler()
+            normalized_X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
+            normalized_X_val = pd.DataFrame(scaler.fit_transform(X_val), columns=X_val.columns)
+            normalized_X_test = pd.DataFrame(scaler.fit_transform(X_test), columns=X_test.columns)
+            normalized_y_train = pd.DataFrame(scaler.fit_transform(y_train), columns=y_train.columns).values
+            normalized_y_val = pd.DataFrame(scaler.fit_transform(y_val), columns=y_val.columns).values
+            normalized_y_test = pd.DataFrame(scaler.fit_transform(y_test), columns=y_test.columns).values
+            normalized_X_train, normalized_X_val, normalized_X_test = normalized_X_train.drop(columns=['y']).values, normalized_X_val.drop(columns=['y']).values, normalized_X_test.drop(columns=['y']).values
+            network = LGBM_w_Feature_Selector(model="lgbm",problem_type="regression",param_grid=lgbm_param_grid,X_train=normalized_X_train, X_test=normalized_X_test, slack=0.1, 
+                                                    X_val=normalized_X_val, y_val=normalized_y_val,y_train=normalized_y_train,y_test=normalized_y_test,iterations=10) 
+            _,all_score, gb_score, mo_score, rfe_score, mi_score = network.feature_extraction(f_number, seed=42 , method="number of features", run_CV=True, include_RFE=True)
+            all_scores.append(all_score)
+            gb_scores.append(gb_score)    
+            mo_scores.append(mo_score)
+            mi_scores.append(mi_score)
+            rfe_scores.append(rfe_score)
 
-for f_number in [3, 5, 8]:
-    all_scores = []
-    gb_scores = []
-    mo_scores = []
-    rfe_scores = []
-    for i in range(200):
-        data = pd.read_csv("/home/efe/Documents/m4-dataset/m4-preprocess/m4-preprocess/{}_M4_Daily.csv".format(str(i)))
-        data = data.rename(columns = lambda x:re.sub('[^A-Za-z0-9_]+', '', x))
-        train_data, X_test = data.iloc[:-50], data.iloc[-50:]
-        nb = len(train_data)
-        val_split = 0.2
-        X_train, X_val = train_data.iloc[:int((1-val_split)*nb)], train_data.iloc[int((1-val_split)*nb):]
-        y_train, y_val, y_test = X_train[["y"]], X_val[["y"]], X_test[["y"]]
-        scaler = MinMaxScaler()
-        normalized_X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
-        normalized_X_val = pd.DataFrame(scaler.fit_transform(X_val), columns=X_val.columns)
-        normalized_X_test = pd.DataFrame(scaler.fit_transform(X_test), columns=X_test.columns)
-        normalized_y_train = pd.DataFrame(scaler.fit_transform(y_train), columns=y_train.columns).values
-        normalized_y_val = pd.DataFrame(scaler.fit_transform(y_val), columns=y_val.columns).values
-        normalized_y_test = pd.DataFrame(scaler.fit_transform(y_test), columns=y_test.columns).values
-        normalized_X_train, normalized_X_val, normalized_X_test = normalized_X_train.drop(columns=['y']).values, normalized_X_val.drop(columns=['y']).values, normalized_X_test.drop(columns=['y']).values
-        network = LGBM_w_Feature_Selector(model="lgbm",problem_type="regression",param_grid=lgbm_param_grid,X_train=normalized_X_train, X_test=normalized_X_test, slack=0.1, 
-                                                X_val=normalized_X_val, y_val=normalized_y_val,y_train=normalized_y_train,y_test=normalized_y_test,iterations=10) 
-        _,all_score, gb_score, mo_score, rfe_score = network.feature_extraction(f_number, seed=42 , method="number of features", run_CV=True, include_RFE=True)
-        all_scores.append(all_score)
-        gb_scores.append(gb_score)    
-        mo_scores.append(mo_score)
-        rfe_scores.append(rfe_score)
+        all[f_number] = np.mean(all_scores)
+        gb[f_number] = np.mean(gb_scores)
+        mo[f_number] = np.mean(mo_scores)
+        rfe[f_number] = np.mean(rfe_scores)
+        mi[f_number] = np.mean(mi_scores)
 
-    all[f_number] = np.mean(all_scores)
-    gb[f_number] = np.mean(gb_scores)
-    mo[f_number] = np.mean(mo_scores)
-    rfe[f_number] = np.mean(rfe_scores)
-logging.info("For M4 daily lgbm")
-
-log_dictionaries("MSE", all.keys(), dict_names_with_rfe, all, gb, mo, rfe)
+    logging.info("For M4 daily lgbm")
+    log_dictionaries("MSE", all.keys(), dict_names_with_rfe, all, gb, mo, rfe, mi)
 
 
-all, gb, mo = {}, {}, {}
+for interval in ranges:
+    for f_number in [6, 9, 12, 15]:
+        all_scores = []
+        gb_scores = []
+        mo_scores = []
+        mi_scores = []
+        for i in interval:
+            data = pd.read_csv("/home/efe/Documents/m4-dataset/m4-preprocess/m4-preprocess/{}_M4_Daily.csv".format(str(i)))
+            data = data.rename(columns = lambda x:re.sub('[^A-Za-z0-9_]+', '', x))
+            train_data, X_test = data.iloc[:-50], data.iloc[-50:]
+            nb = len(data)
+            val_split = 0.3
+            test_split = 0.1
+            X_train, X_val, X_test = data.iloc[:int((1-(val_split+test_split))*nb)], data.iloc[int((1-(val_split+test_split))*nb):int((1-(test_split))*nb)], data.iloc[int((1-(test_split))*nb):]
+            y_train, y_val, y_test = X_train[["y"]], X_val[["y"]], X_test[["y"]]
+            scaler = MinMaxScaler()
+            normalized_X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
+            normalized_X_val = pd.DataFrame(scaler.fit_transform(X_val), columns=X_val.columns)
+            normalized_X_test = pd.DataFrame(scaler.fit_transform(X_test), columns=X_test.columns)
+            normalized_y_train = pd.DataFrame(scaler.fit_transform(y_train), columns=y_train.columns).values
+            normalized_y_val = pd.DataFrame(scaler.fit_transform(y_val), columns=y_val.columns).values
+            normalized_y_test = pd.DataFrame(scaler.fit_transform(y_test), columns=y_test.columns).values
+            normalized_X_train, normalized_X_val, normalized_X_test = normalized_X_train.drop(columns=['y']).values, normalized_X_val.drop(columns=['y']).values, normalized_X_test.drop(columns=['y']).values
+            network = LGBM_w_Feature_Selector(model="mlp",problem_type="regression",param_grid=mlp_param_grid,X_train=normalized_X_train, X_test=normalized_X_test, slack=0.1, 
+                                                    X_val=normalized_X_val, y_val=normalized_y_val,y_train=normalized_y_train,y_test=normalized_y_test,iterations=10) 
+            _,all_score, gb_score, mo_score, mi_score = network.feature_extraction(f_number, seed=42 , method="number of features", run_CV=True)
+            all_scores.append(all_score)
+            gb_scores.append(gb_score)    
+            mo_scores.append(mo_score)
+            mi_scores.append(mi_score)
 
-for f_number in [3, 5, 8]:
-    all_scores = []
-    gb_scores = []
-    mo_scores = []
-    for i in range(200):
-        data = pd.read_csv("/home/efe/Documents/m4-dataset/m4-preprocess/m4-preprocess/{}_M4_Hourly.csv".format(str(i)))
-        data = data.rename(columns = lambda x:re.sub('[^A-Za-z0-9_]+', '', x))
-        train_data, X_test = data.iloc[:-50], data.iloc[-50:]
-        nb = len(train_data)
-        val_split = 0.2
-        X_train, X_val = train_data.iloc[:int((1-val_split)*nb)], train_data.iloc[int((1-val_split)*nb):]
-        y_train, y_val, y_test = X_train[["y"]], X_val[["y"]], X_test[["y"]]
-        scaler = MinMaxScaler()
-        normalized_X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
-        normalized_X_val = pd.DataFrame(scaler.fit_transform(X_val), columns=X_val.columns)
-        normalized_X_test = pd.DataFrame(scaler.fit_transform(X_test), columns=X_test.columns)
-        normalized_y_train = pd.DataFrame(scaler.fit_transform(y_train), columns=y_train.columns).values
-        normalized_y_val = pd.DataFrame(scaler.fit_transform(y_val), columns=y_val.columns).values
-        normalized_y_test = pd.DataFrame(scaler.fit_transform(y_test), columns=y_test.columns).values
-        normalized_X_train, normalized_X_val, normalized_X_test = normalized_X_train.drop(columns=['y']).values, normalized_X_val.drop(columns=['y']).values, normalized_X_test.drop(columns=['y']).values
-        network = LGBM_w_Feature_Selector(model="mlp",problem_type="regression",param_grid=mlp_param_grid,X_train=normalized_X_train, X_test=normalized_X_test, slack=0.1, 
-                                                X_val=normalized_X_val, y_val=normalized_y_val,y_train=normalized_y_train,y_test=normalized_y_test,iterations=10) 
-        _,all_score, gb_score, mo_score = network.feature_extraction(f_number, seed=42 , method="number of features", run_CV=True)
-        all_scores.append(all_score)
-        gb_scores.append(gb_score)    
-        mo_scores.append(mo_score)
+        all[f_number] = np.mean(all_scores)
+        gb[f_number] = np.mean(gb_scores)
+        mo[f_number] = np.mean(mo_scores)
+        mi[f_number] = np.mean(mi_scores)
 
-    all[f_number] = np.mean(all_scores)
-    gb[f_number] = np.mean(gb_scores)
-    mo[f_number] = np.mean(mo_scores)
-logging.info("For M4 hourly mlp")
-log_dictionaries("MSE", all.keys(),dict_names_no_rfe,  all, gb, mo)
+    logging.info("For M4 daily mlp")
+    log_dictionaries("MSE", all.keys(), dict_names_no_rfe, all, gb, mo, mi)
 
-all, gb, mo = {}, {}, {}
+# all, gb, mo = {}, {}, {}
 
-for f_number in [3, 5, 8]:
-    all_scores = []
-    gb_scores = []
-    mo_scores = []
-    rfe_scores = []
-    for i in range(200):
-        data = pd.read_csv("/home/efe/Documents/m4-dataset/m4-preprocess/m4-preprocess/{}_M4_Daily.csv".format(str(i)))
-        data = data.rename(columns = lambda x:re.sub('[^A-Za-z0-9_]+', '', x))
-        train_data, X_test = data.iloc[:-50], data.iloc[-50:]
-        nb = len(train_data)
-        val_split = 0.2
-        X_train, X_val = train_data.iloc[:int((1-val_split)*nb)], train_data.iloc[int((1-val_split)*nb):]
-        y_train, y_val, y_test = X_train[["y"]], X_val[["y"]], X_test[["y"]]
-        scaler = MinMaxScaler()
-        normalized_X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
-        normalized_X_val = pd.DataFrame(scaler.fit_transform(X_val), columns=X_val.columns)
-        normalized_X_test = pd.DataFrame(scaler.fit_transform(X_test), columns=X_test.columns)
-        normalized_y_train = pd.DataFrame(scaler.fit_transform(y_train), columns=y_train.columns).values
-        normalized_y_val = pd.DataFrame(scaler.fit_transform(y_val), columns=y_val.columns).values
-        normalized_y_test = pd.DataFrame(scaler.fit_transform(y_test), columns=y_test.columns).values
-        normalized_X_train, normalized_X_val, normalized_X_test = normalized_X_train.drop(columns=['y']).values, normalized_X_val.drop(columns=['y']).values, normalized_X_test.drop(columns=['y']).values
-        network = LGBM_w_Feature_Selector(model="mlp",problem_type="regression",param_grid=mlp_param_grid,X_train=normalized_X_train, X_test=normalized_X_test, slack=0.1, 
-                                                X_val=normalized_X_val, y_val=normalized_y_val,y_train=normalized_y_train,y_test=normalized_y_test,iterations=10) 
-        _,all_score, gb_score, mo_score = network.feature_extraction(f_number, seed=42 , method="number of features", run_CV=True)
-        all_scores.append(all_score)
-        gb_scores.append(gb_score)    
-        mo_scores.append(mo_score)
+# for f_number in [3, 5, 8]:
+#     all_scores = []
+#     gb_scores = []
+#     mo_scores = []
+#     for i in range(200):
+#         data = pd.read_csv("/home/efe/Documents/m4-dataset/m4-preprocess/m4-preprocess/{}_M4_Hourly.csv".format(str(i)))
+#         data = data.rename(columns = lambda x:re.sub('[^A-Za-z0-9_]+', '', x))
+#         train_data, X_test = data.iloc[:-50], data.iloc[-50:]
+#         nb = len(train_data)
+#         val_split = 0.2
+#         X_train, X_val = train_data.iloc[:int((1-val_split)*nb)], train_data.iloc[int((1-val_split)*nb):]
+#         y_train, y_val, y_test = X_train[["y"]], X_val[["y"]], X_test[["y"]]
+#         scaler = MinMaxScaler()
+#         normalized_X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
+#         normalized_X_val = pd.DataFrame(scaler.fit_transform(X_val), columns=X_val.columns)
+#         normalized_X_test = pd.DataFrame(scaler.fit_transform(X_test), columns=X_test.columns)
+#         normalized_y_train = pd.DataFrame(scaler.fit_transform(y_train), columns=y_train.columns).values
+#         normalized_y_val = pd.DataFrame(scaler.fit_transform(y_val), columns=y_val.columns).values
+#         normalized_y_test = pd.DataFrame(scaler.fit_transform(y_test), columns=y_test.columns).values
+#         normalized_X_train, normalized_X_val, normalized_X_test = normalized_X_train.drop(columns=['y']).values, normalized_X_val.drop(columns=['y']).values, normalized_X_test.drop(columns=['y']).values
+#         network = LGBM_w_Feature_Selector(model="mlp",problem_type="regression",param_grid=mlp_param_grid,X_train=normalized_X_train, X_test=normalized_X_test, slack=0.1, 
+#                                                 X_val=normalized_X_val, y_val=normalized_y_val,y_train=normalized_y_train,y_test=normalized_y_test,iterations=10) 
+#         _,all_score, gb_score, mo_score = network.feature_extraction(f_number, seed=42 , method="number of features", run_CV=True)
+#         all_scores.append(all_score)
+#         gb_scores.append(gb_score)    
+#         mo_scores.append(mo_score)
 
-    all[f_number] = np.mean(all_scores)
-    gb[f_number] = np.mean(gb_scores)
-    mo[f_number] = np.mean(mo_scores)
-logging.info("For M4 daily mlp")
-log_dictionaries("MSE", all.keys(), dict_names_no_rfe, all, gb, mo)
+#     all[f_number] = np.mean(all_scores)
+#     gb[f_number] = np.mean(gb_scores)
+#     mo[f_number] = np.mean(mo_scores)
+# logging.info("For M4 hourly mlp")
+# log_dictionaries("MSE", all.keys(),dict_names_no_rfe,  all, gb, mo)
+
+# all, gb, mo, mi = {}, {}, {}, {}
+
+# for f_number in [3, 5, 8]:
+#     all_scores = []
+#     gb_scores = []
+#     mo_scores = []
+#     rfe_scores = []
+#     mi_scores = []
+#     for i in range(200):
+#         data = pd.read_csv("/home/efe/Documents/m4-dataset/m4-preprocess/m4-preprocess/{}_M4_Daily.csv".format(str(i)))
+#         data = data.rename(columns = lambda x:re.sub('[^A-Za-z0-9_]+', '', x))
+#         train_data, X_test = data.iloc[:-50], data.iloc[-50:]
+#         nb = len(train_data)
+#         val_split = 0.33
+#         X_train, X_val = train_data.iloc[:int((1-val_split)*nb)], train_data.iloc[int((1-val_split)*nb):]
+#         y_train, y_val, y_test = X_train[["y"]], X_val[["y"]], X_test[["y"]]
+#         scaler = MinMaxScaler()
+#         normalized_X_train = pd.DataFrame(scaler.fit_transform(X_train), columns=X_train.columns)
+#         normalized_X_val = pd.DataFrame(scaler.fit_transform(X_val), columns=X_val.columns)
+#         normalized_X_test = pd.DataFrame(scaler.fit_transform(X_test), columns=X_test.columns)
+#         normalized_y_train = pd.DataFrame(scaler.fit_transform(y_train), columns=y_train.columns).values
+#         normalized_y_val = pd.DataFrame(scaler.fit_transform(y_val), columns=y_val.columns).values
+#         normalized_y_test = pd.DataFrame(scaler.fit_transform(y_test), columns=y_test.columns).values
+#         normalized_X_train, normalized_X_val, normalized_X_test = normalized_X_train.drop(columns=['y']).values, normalized_X_val.drop(columns=['y']).values, normalized_X_test.drop(columns=['y']).values
+#         network = LGBM_w_Feature_Selector(model="mlp",problem_type="regression",param_grid=mlp_param_grid,X_train=normalized_X_train, X_test=normalized_X_test, slack=0.1, 
+#                                                 X_val=normalized_X_val, y_val=normalized_y_val,y_train=normalized_y_train,y_test=normalized_y_test,iterations=10) 
+#         _,all_score, gb_score, mo_score, mi_score = network.feature_extraction(f_number, seed=42 , method="number of features", run_CV=True)
+#         all_scores.append(all_score)
+#         gb_scores.append(gb_score)    
+#         mo_scores.append(mo_score)
+#         mi_scores.append(mi_score)
+
+#     all[f_number] = np.mean(all_scores)
+#     gb[f_number] = np.mean(gb_scores)
+#     mo[f_number] = np.mean(mo_scores)
+#     mi[f_number] = np.mean(mi_scores)
+
+# logging.info("For M4 daily mlp")
+# log_dictionaries("MSE", all.keys(), dict_names_no_rfe, all, gb, mo, mi)
 
 

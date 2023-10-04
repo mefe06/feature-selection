@@ -10,7 +10,7 @@ import numpy as np
 import logging
 warnings.filterwarnings("ignore", category=DataConversionWarning)
 warnings.filterwarnings("ignore", category=ConvergenceWarning)
-logging.basicConfig(filename='classification_results.log', filemode="w", level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.basicConfig(filename='log_loss_classification_results.log', filemode="w", level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(message)s')
 def log_dictionaries(key_name, keys, dict_names, *dicts,):
     # Log the header
     header = str(key_name).ljust(15) + " | ".join([str(dict_names[i]) for i in range(len(dict_names))])
@@ -80,7 +80,6 @@ for f_number in [5, 8]:
 
 logging.info("For credit data lgbm")
 log_dictionaries("ROCAUC", all.keys(),dict_names_with_rfe, all, gb, mo,rfe)
-
 for f_number in [5, 8]:
     all_scores = []
     gb_scores = []
@@ -99,7 +98,7 @@ for f_number in [5, 8]:
     normalized_X_train, normalized_X_val, normalized_X_test = normalized_X_train.drop(columns=['Y']).values, normalized_X_val.drop(columns=['Y']).values, normalized_X_test.drop(columns=['Y']).values
     network = LGBM_w_Feature_Selector(model="mlp",problem_type="Classifier",param_grid=mlp_param_grid,X_train=normalized_X_train, X_test=normalized_X_test, slack=0.1, 
                                         X_val=normalized_X_val, y_val=y_val,y_train=y_train,y_test=y_test,iterations=10) 
-    _,all_score, gb_score, mo_score = network.feature_extraction(f_number, seed=42 , method="number of features", run_CV=True)
+    _,all_score, gb_score, mo_score = network.feature_extraction(f_number, seed=12 , method="number of features", run_CV=True)
     all_scores.append(all_score)
     gb_scores.append(gb_score)    
     mo_scores.append(mo_score)

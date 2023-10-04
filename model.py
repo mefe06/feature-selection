@@ -16,7 +16,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.metrics import make_scorer, roc_auc_score
 import random
 from sklearn.svm import SVR, SVC
-
+from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
 
 class LGBM_w_Feature_Selector():
 
@@ -269,24 +269,28 @@ class LGBM_w_Feature_Selector():
             acc_gg.append(self.CV_test(X[:,gb_list], y).mean())
         return acc_nn, acc_gg
 
-    def feature_extraction(self, f_number, method="number of features", seed =88, include_RFE=False, loss_tolerance = 3, shuffle=False, run_CV=False):
+    def feature_extraction(self, f_number, method="number of features", seed =88, include_RFE=False, loss_tolerance = 3, shuffle=False, run_CV=False, time_series=False):
         
         feature_weights = {}
         # Gradient Boosting FS
         np.random.seed(seed)
         if self.problem_type=="Classifier":
             forest=lgb.LGBMClassifier(max_depth = 3, n_estimators=50,random_state=0,importance_type='gain', verbose=-1)
+            mi_importances= mutual_info_classif(self.X_train, self.y_train)
         else:
             forest = lgb.LGBMRegressor(max_depth = 3, n_estimators=50,random_state=0,importance_type='gain', verbose=-1)
+            mi_importances= mutual_info_regression(self.X_train, self.y_train)
         forest.fit(self.X_train, self.y_train.ravel())
         gb_importances = forest.feature_importances_
-
+        
         if method == "number of features":
             cancelout_weights_importance = self.main_search_2(f_number= f_number, shuffle=shuffle, run_cv=run_CV)
         elif method == "convergence": 
             cancelout_weights_importance = self.main_search_1(loss_tolerance = loss_tolerance, run_cv=run_CV)
         else:
             raise ValueError("choose a valid feature selection method.")
+        mi_fi = mi_importances.argsort()[-f_number:][::-1]
+
         if method == "number of features":
             feature_weights['nn'] = cancelout_weights_importance.argsort()[::-1]
             feature_weights['gb'] = gb_importances.argsort()[::-1]
@@ -295,22 +299,25 @@ class LGBM_w_Feature_Selector():
             mask_len = self.X_test.shape[1]        
             all_score = self.test_with_mask( np.expand_dims(np.ones(mask_len),axis=0))
             gb_score = self.test_with_mask( np.expand_dims(self.create_mask(gb_fi, mask_len),axis=0))
-            mo_score = self.test_with_mask( np.expand_dims(self.create_mask(nn_fi, mask_len),axis=0) )
+            mi_score = self.test_with_mask( np.expand_dims(self.create_mask(mi_fi, mask_len),axis=0))
+            mo_score = self.test_with_mask( np.expand_dims(self.create_mask(nn_fi, mask_len),axis=0))
+
             if include_RFE&(self.model_type=="lgbm"):
                 rfe = RFE(self.initial_model, n_features_to_select=f_number) 
                 rfe.fit(self.X_train, self.y_train)
                 rfe_mask = 1*rfe.support_
                 rfe_score = self.test_with_mask( np.expand_dims(rfe_mask,axis=0))
-                return feature_weights,all_score, gb_score, mo_score, rfe_score
+                return feature_weights,all_score, gb_score, mo_score, rfe_score, mi_score
             
-            return feature_weights,all_score, gb_score, mo_score
+            return feature_weights,all_score, gb_score, mo_score, mi_score
         
         else:
             nn_fi = [i for i, x in enumerate(cancelout_weights_importance) if x == 1]
             mask_len = self.X_test.shape[1]        
-            mo_score = self.test_with_mask(  np.expand_dims(self.create_mask(nn_fi, mask_len),axis=0) )
+            mi_score = self.test_with_mask( np.expand_dims(self.create_mask(mi_fi, mask_len),axis=0))
+            mo_score = self.test_with_mask(  np.expand_dims(self.create_mask(nn_fi, mask_len),axis=0))
             all_score = self.test_with_mask( np.expand_dims(np.ones(mask_len),axis=0))
-            return feature_weights,all_score, mo_score
+            return feature_weights,all_score, mo_score, mi_score
 
 
 
@@ -320,8 +327,8 @@ class LGBM_w_Feature_Selector():
         masked_test_x = np.delete(self.X_test, zero_columns, axis=1)
         self.model.fit(masked_train_x, self.y_train)    
         if self.problem_type == "Classifier":
-            loss = roc_auc_score(self.y_test ,self.model.predict_proba(masked_test_x)[:,1])
-            #loss = log_loss(self.y_test ,self.model.predict_proba(masked_test_x)[:,1])
+            #loss = roc_auc_score(self.y_test ,self.model.predict_proba(masked_test_x)[:,1])
+            loss = log_loss(self.y_test ,self.model.predict_proba(masked_test_x)[:,1])
         else:  
             loss = mean_squared_error(self.y_test  ,self.model.predict(masked_test_x))
         
