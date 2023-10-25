@@ -269,7 +269,49 @@ class LGBM_w_Feature_Selector():
             acc_gg.append(self.CV_test(X[:,gb_list], y).mean())
         return acc_nn, acc_gg
 
-    def feature_extraction(self, f_number, method="number of features", seed =88, include_RFE=False, loss_tolerance = 3, shuffle=False, run_CV=False, time_series=False):
+    def cv_for_other_fs_methods(self,f_numbers ):
+        best_gbm=1000
+        best_mi=1000
+        for f_number in f_numbers:
+            if self.problem_type=="Classifier":
+                forest=lgb.LGBMClassifier(max_depth = 3, n_estimators=50,random_state=0,importance_type='gain', verbose=-1)
+                mi_importances= mutual_info_classif(self.X_train, self.y_train)
+            else:
+                forest = lgb.LGBMRegressor(max_depth = 3, n_estimators=50,random_state=0,importance_type='gain', verbose=-1)
+                mi_importances= mutual_info_regression(self.X_train, self.y_train)
+            forest.fit(self.X_train, self.y_train.ravel())
+            gb_importances = forest.feature_importances_
+            mi_fi = mi_importances.argsort()[-f_number:][::-1]
+            gb_fi = gb_importances.argsort()[-f_number:][::-1]
+            mi_score = self.test_with_mask( np.expand_dims(self.create_mask(mi_fi, self.mask_len),axis=0))
+            gb_score = self.test_with_mask( np.expand_dims(self.create_mask(gb_fi, self.mask_len),axis=0))
+            if mi_score<best_mi:
+                best_mi = mi_score
+            if gb_score<best_gbm:
+                best_gbm = gb_score            
+        return best_gbm, best_mi
+    def cv_for_rfe(self,f_numbers):
+        best_rfe = 1000
+        for f_number in f_numbers:
+            rfe = RFE(self.initial_model, n_features_to_select=f_number) 
+            rfe.fit(self.X_train, self.y_train)
+            rfe_mask = 1*rfe.support_
+            rfe_score = self.test_with_mask( np.expand_dims(rfe_mask,axis=0))
+            if rfe_score<best_rfe:
+                best_rfe= rfe_score           
+        return best_rfe 
+    def cv_gbmo(self,loss_ts, slacks):
+        best_gbmo=1000
+        for loss_t in loss_ts:
+            for slack in slacks:
+                self.slack=slack
+                cancelout_weights_importance = self.main_search_1(loss_tolerance = loss_t, run_cv=True)
+                nn_fi = [i for i, x in enumerate(cancelout_weights_importance) if x == 1]
+                mo_score = self.test_with_mask( np.expand_dims(self.create_mask(nn_fi, self.mask_len),axis=0))
+                if mo_score<best_gbmo:
+                    best_gbmo= mo_score           
+        return best_gbmo 
+    def feature_extraction(self, f_number, method="number of features", seed =88, include_RFE=False, loss_tolerance = 3, shuffle=False, run_CV=False, f_numbers=[10,20, 30, 40, 50], loss_ts=[1,2,3,4,5], slacks=[0, 0.01, 0.05, 0.1, 0.15, 0.2]):
         
         feature_weights = {}
         # Gradient Boosting FS
@@ -282,7 +324,8 @@ class LGBM_w_Feature_Selector():
             mi_importances= mutual_info_regression(self.X_train, self.y_train)
         forest.fit(self.X_train, self.y_train.ravel())
         gb_importances = forest.feature_importances_
-        
+        self.mask_len = self.X_test.shape[1]        
+
         if method == "number of features":
             cancelout_weights_importance = self.main_search_2(f_number= f_number, shuffle=shuffle, run_cv=run_CV)
         elif method == "convergence": 
@@ -312,12 +355,19 @@ class LGBM_w_Feature_Selector():
             return feature_weights,all_score, gb_score, mo_score, mi_score
         
         else:
+
             nn_fi = [i for i, x in enumerate(cancelout_weights_importance) if x == 1]
             mask_len = self.X_test.shape[1]        
-            mi_score = self.test_with_mask( np.expand_dims(self.create_mask(mi_fi, mask_len),axis=0))
-            mo_score = self.test_with_mask(  np.expand_dims(self.create_mask(nn_fi, mask_len),axis=0))
+            #mi_score = self.test_with_mask( np.expand_dims(self.create_mask(mi_fi, mask_len),axis=0))
+            #mo_score = self.test_with_mask( np.expand_dims(self.create_mask(nn_fi, mask_len),axis=0))
+            mo_score = self.cv_gbmo(loss_ts, slacks)
+            gbm_score, mi_score = self.cv_for_other_fs_methods(f_numbers)
             all_score = self.test_with_mask( np.expand_dims(np.ones(mask_len),axis=0))
-            return feature_weights,all_score, mo_score, mi_score
+            if include_RFE&(self.model_type=="lgbm"):
+                rfe_score=self.cv_for_rfe(f_numbers)
+                return feature_weights,all_score, mo_score, gbm_score, rfe_score, mi_score
+
+            return feature_weights,all_score, mo_score, gbm_score, mi_score
 
 
 
