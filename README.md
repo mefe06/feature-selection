@@ -6,7 +6,7 @@ The repository includes the used datasets.
 ## Installation
 
 1. Clone the repository:
-git clone https://github.com/mefe06/feature-selection
+git clone https://github.com/mefe06/feature-selection.git
 
 2. Navigate to the repository directory:
 cd AFS_BM-Algorithm
