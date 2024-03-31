@@ -1,4 +1,4 @@
-# AFS_BM-Algorithm Repository
+# Binary Mask Optimization Algorithm Repository
 
 This repository provides the code for our paper: 
 The repository includes the used datasets.
@@ -9,7 +9,7 @@ The repository includes the used datasets.
 git clone https://github.com/mefe06/feature-selection.git
 
 2. Navigate to the repository directory:
-cd AFS_BM-Algorithm
+cd feature-selection
 
 3. Install the required packages:
 pip install -r requirements.txt
