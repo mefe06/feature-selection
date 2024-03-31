@@ -162,7 +162,7 @@ mlp_param_grid ={
 # ##Save the figure
 # plt.savefig("voice_mlp_gbmo_plot_losses.png") 
 ## Sonar Data
-seed= 13 #47#68 #63
+seed= 13 
 all_scores = []
 mo_scores = []
 flbmo_scores = []
@@ -189,9 +189,6 @@ normalized_X_test = pd.DataFrame(scaler.transform(X_test), columns=X_test.column
 normalized_X_train, normalized_X_val_1, normalized_X_val_2,  normalized_X_test = normalized_X_train.drop(columns=['Y']).values, normalized_X_val_1.drop(columns=['Y']).values, normalized_X_val_2.drop(columns=['Y']).values, normalized_X_test.drop(columns=['Y']).values
 network = LGBM_w_Feature_Selector(model="lgbm",problem_type="Classifier",param_grid=lgbm_param_grid,X_train=normalized_X_train, X_test=normalized_X_test, slack=0.0, 
                                         X_val_1=normalized_X_val_1, y_val_1=y_val_1.values,X_val_2=normalized_X_val_2, y_val_2=y_val_2.values, y_train=y_train.values,y_test=y_test.values, iterations=10) 
-## 13 fena değil
-# 53te hesp çok iyi
-# 17 iyi
 _,all_score, flbmo_score, mo_score, gbm_score, rfe_score, mi_score = network.feature_extraction(5, seed=0 , method="convergence", loss_tolerance=1,run_CV=True, include_RFE=True, f_numbers=[10, 12, 15, 30], loss_ts=[1], slacks=[0.00025, 0.001, 0.01, 0.05]) #slacks=[0.005, 0.01])
 all_scores.append(all_score)
 flbmo_scores.append(flbmo_score)
@@ -224,7 +221,7 @@ plt.ylabel("Validation Loss")
 ##Save the figure
 plt.savefig("sonar_lgbm_gbmo_plot_losses.png") 
 
-seed = 12#96
+seed = 12
 all_scores = []
 mo_scores = []
 lgbm_scores=[]
@@ -358,7 +355,7 @@ plt.ylabel("Validation Loss")
 ##Save the figure
 plt.savefig("res_lgbm_gbmo_plot_losses.png") 
 
-seed= 58#20 #16
+seed= 58
 data = pd.read_excel('Residential-Building-Data-Set.xlsx', sheet_name=0)
 data = data.rename(columns = lambda x:re.sub('[^A-Za-z0-9_]+', '', x))
 new_header = data.iloc[0] #grab the first row for the header
