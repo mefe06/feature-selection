@@ -319,8 +319,7 @@ class LGBM_w_Feature_Selector():
         t0=time.process_time()
         for f_number in f_numbers:
             self.model.fit(self.X_full_train, self.y_full_train)
-            #rfe = RFE(self.model, n_features_to_select=f_number) 
-            rfe = CustomRFE(self.model, f_number)
+            rfe = RFE(self.model, n_features_to_select=f_number) 
             rfe.fit(self.X_full_train, self.y_full_train)
             rfe_mask = 1*rfe.support_
             rfe_score = self.val_with_mask( np.expand_dims(rfe_mask,axis=0))
