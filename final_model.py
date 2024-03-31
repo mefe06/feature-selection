@@ -4,9 +4,6 @@ import numpy as np
 from scipy.optimize import minimize
 from sklearn.model_selection import RandomizedSearchCV
 from sklearn.metrics import roc_auc_score, accuracy_score, f1_score, recall_score, precision_score, mean_squared_error,mean_absolute_error, log_loss
-from tqdm import tqdm
-#import pickle
-#import pygmo as pg
 from sklearn.neural_network import MLPRegressor, MLPClassifier
 from sklearn.feature_selection import RFE
 from sklearn.ensemble import GradientBoostingClassifier, RandomForestClassifier
