@@ -18,7 +18,6 @@ from sklearn.svm import SVR, SVC
 from sklearn.feature_selection import mutual_info_classif, mutual_info_regression
 import pandas as pd
 import time
-from custom_RFE import CustomRFE
 
 class LGBM_w_Feature_Selector():
 
