@@ -1,6 +1,6 @@
 # Binary Mask Optimization Algorithm Repository
 
-This repository provides the code for our paper: 
+This repository provides the code for our paper: Binary Feature Mask Optimization for Feature Selection
 The repository includes the used datasets.
 
 ## Installation
